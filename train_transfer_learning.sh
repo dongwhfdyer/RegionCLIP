@@ -10,6 +10,18 @@ MODEL.CLIP.BB_RPN_WEIGHTS ./pretrained_ckpt/rpn/rpn_coco_48.pth \
 MODEL.CLIP.TEXT_EMB_PATH ./pretrained_ckpt/concept_emb/coco_48_base_cls_emb.pth \
 MODEL.CLIP.OPENSET_TEST_TEXT_EMB_PATH ./pretrained_ckpt/concept_emb/coco_65_cls_emb.pth \
 
+
+# RN50, DIOR
+python3 ./tools/train_net.py \
+--num-gpus 1 \
+--config-file ./configs/dior/CLIP_fast_rcnn_R_50_C4_ovd.yaml \
+MODEL.WEIGHTS ./pretrained_ckpt/regionclip/regionclip_pretrained-cc_rn50.pth \
+MODEL.CLIP.OFFLINE_RPN_CONFIG ./configs/COCO-InstanceSegmentation/mask_rcnn_R_50_C4_1x_ovd_FSD.yaml \
+MODEL.CLIP.BB_RPN_WEIGHTS ./pretrained_ckpt/rpn/rpn_coco_48.pth \
+MODEL.CLIP.TEXT_EMB_PATH ./pretrained_ckpt/concept_emb/dior_seen_classes_embeds.pth \
+MODEL.CLIP.OPENSET_TEST_TEXT_EMB_PATH ./pretrained_ckpt/concept_emb/dior_all_classes_embeds.pth \
+
+
 # # RN50, LVIS
 # python3 ./tools/train_net.py \
 # --num-gpus 1 \

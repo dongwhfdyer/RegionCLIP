@@ -82,9 +82,15 @@ def main(args):
     # create model
     model = create_model(cfg)
 
+    # file_name='dior_seen_classes.txt'
+    file_name='dior_all_classes.txt'
+    # file_name='dior_unseen_classes.txt'
+    output_file_name = file_name.split('.')[0] + '_embeds.pth'
+
+
     # input concepts
-    concept_file = os.path.join(cfg.INPUT_DIR, 'concepts.txt')
-    
+    concept_file = os.path.join(cfg.INPUT_DIR, file_name)
+
     concept_feats = []
     with open(concept_file, 'r') as f:
         for line in f:
@@ -98,7 +104,7 @@ def main(args):
 
     concept_feats = torch.stack(concept_feats, 0)
     concept_feats = torch.squeeze(concept_feats).cpu()
-    saved_path = os.path.join(cfg.OUTPUT_DIR, 'concept_embeds.pth')
+    saved_path = os.path.join(cfg.OUTPUT_DIR, output_file_name)
     torch.save(concept_feats, saved_path)
 
     print("done!")

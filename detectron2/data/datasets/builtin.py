@@ -56,7 +56,6 @@ _PREDEFINED_SPLITS_COCO["coco_ovd"] = {
     "coco_2017_ovd_t_test": ("coco/val2017", "coco/annotations/ovd_ins_val2017_t.json"),
 }
 
-
 _PREDEFINED_SPLITS_COCO["coco_person"] = {
     "keypoints_coco_2014_train": (
         "coco/train2014",
@@ -85,7 +84,6 @@ _PREDEFINED_SPLITS_COCO["coco_person"] = {
         "coco/annotations/person_keypoints_val2017_100.json",
     ),
 }
-
 
 _PREDEFINED_SPLITS_COCO_PANOPTIC = {
     "coco_2017_train_panoptic": (
@@ -119,11 +117,11 @@ def register_all_coco(root):
                 # Assume pre-defined datasets live in `./datasets`.
                 register_coco_instances(
                     key,
-                    {}, # empty metadata, it will be overwritten in load_coco_json() function
+                    {},  # empty metadata, it will be overwritten in load_coco_json() function
                     os.path.join(root, json_file) if "://" not in json_file else json_file,
                     os.path.join(root, image_root),
                 )
-        else: # default splits
+        else:  # default splits
             for key, (image_root, json_file) in splits_per_dataset.items():
                 # Assume pre-defined datasets live in `./datasets`.
                 register_coco_instances(
@@ -134,8 +132,8 @@ def register_all_coco(root):
                 )
 
     for (
-        prefix,
-        (panoptic_root, panoptic_json, semantic_root),
+            prefix,
+            (panoptic_root, panoptic_json, semantic_root),
     ) in _PREDEFINED_SPLITS_COCO_PANOPTIC.items():
         prefix_instances = prefix[: -len("_panoptic")]
         instances_meta = MetadataCatalog.get(prefix_instances)
@@ -161,6 +159,7 @@ def register_all_coco(root):
             os.path.join(root, panoptic_json),
             instances_json,
         )
+
 
 # ==== Predefined datasets and splits for LVIS ==========
 
@@ -291,6 +290,104 @@ def register_all_ade20k(root):
         )
 
 
+# ---------kkuhn-block------------------------------ # dior
+
+categories_seen = [{"id": 0, "name": "Airplane"},
+                   {"id": 1, "name": "Airport"},
+                   {"id": 6, "name": "Dam"},
+                   {"id": 7, "name": "Expressway service area"},
+                   {"id": 8, "name": "Expressway toll station"},
+                   {"id": 9, "name": "Golf course"},
+                   {"id": 10, "name": "Ground track field"},
+                   {"id": 11, "name": "Harbor"},
+                   {"id": 12, "name": "Overpass"},
+                   {"id": 14, "name": "Stadium"},
+                   {"id": 15, "name": "Storage tank"},
+                   {"id": 16, "name": "Tennis court"},
+                   {"id": 17, "name": "Train station"},
+                   {"id": 18, "name": "Vehicle"},
+                   {"id": 19, "name": "Wind mill"}
+                   ]
+
+categories_unseen = [
+    {"id": 2, "name": "Baseball field"},
+    {"id": 3, "name": "Basketball court"},
+    {"id": 4, "name": "Bridge"},
+    {"id": 5, "name": "Chimney"},
+    {"id": 13, "name": "Ship"}
+
+]
+
+categories_all = [{"id": 0, "name": "Airplane"},
+                  {"id": 1, "name": "Airport"},
+                  {"id": 2, "name": "Baseball field"},
+                  {"id": 3, "name": "Basketball court"},
+                  {"id": 4, "name": "Bridge"},
+                  {"id": 5, "name": "Chimney"},
+                  {"id": 6, "name": "Dam"},
+                  {"id": 7, "name": "Expressway service area"},
+                  {"id": 8, "name": "Expressway toll station"},
+                  {"id": 9, "name": "Golf course"},
+                  {"id": 10, "name": "Ground track field"},
+                  {"id": 11, "name": "Harbor"},
+                  {"id": 12, "name": "Overpass"},
+                  {"id": 13, "name": "Ship"},
+                  {"id": 14, "name": "Stadium"},
+                  {"id": 15, "name": "Storage tank"},
+                  {"id": 16, "name": "Tennis court"},
+                  {"id": 17, "name": "Train station"},
+                  {"id": 18, "name": "Vehicle"},
+                  {"id": 19, "name": "Wind mill"}
+                  ]
+
+
+def _get_metadata(cat):
+    if cat == 'all':
+        # return _get_builtin_metadata('coco')
+        id_to_name = {x['id']: x['name'] for x in categories_all}
+    elif cat == 'seen':
+        id_to_name = {x['id']: x['name'] for x in categories_seen}
+    else:
+        assert cat == 'unseen'
+        id_to_name = {x['id']: x['name'] for x in categories_unseen}
+
+    thing_dataset_id_to_contiguous_id = {
+        x: i for i, x in enumerate(sorted(id_to_name))}
+    thing_classes = [id_to_name[k] for k in sorted(id_to_name)]
+    return {
+        "thing_dataset_id_to_contiguous_id": thing_dataset_id_to_contiguous_id,
+        "thing_classes": thing_classes}
+
+
+_PREDEFINED_SPLITS_DIOR = {
+    "DIOR_zeroshot_train_1_trainval": (
+        "DIOR/JPEGImages-trainval", "DIOR/Annotations/coco_split/split_1_trainval/instances_DIOR_train_seen_2.json", 'seen'),
+    "DIOR_zeroshot_val_1_trainval": (
+        "DIOR/JPEGImages-test", "DIOR/Annotations/coco_split/split_1_trainval/instances_DIOR_test_unseen_2.json", 'unseen'),
+    "DIOR_not_zeroshot_val_1_trainval": (
+        "DIOR/JPEGImages-test", "DIOR/Annotations/coco_split/split_1_trainval/instances_DIOR_test_seen_2.json", 'seen'),
+    "DIOR_generalized_zeroshot_val_1_trainval": (
+        "DIOR/JPEGImages", "DIOR/Annotations/coco_split/split_1_trainval/instances_DIOR_test_all_2_oriorder_ori.json", 'all'),
+    "DIOR_zeroshot_train_oriorder_1_trainval": (
+        "DIOR/JPEGImages", "DIOR/Annotations/coco_split/split_1_trainval/instances_DIOR_train_seen_2_oriorder_ori.json", 'all'),
+    "DIOR_test_1_trainval": ("DIOR/JPEGImages", "DIOR/Annotations/DIOR_test_coco.json", 'all'),
+    "DIOR_train_1_trainval": ("DIOR/JPEGImages", "DIOR/Annotations/DIOR_trainval_coco.json", 'all'),
+}
+
+
+def register_all_dior(root):
+    for key, (image_root, json_file, cat) in _PREDEFINED_SPLITS_DIOR.items():
+        register_coco_instances(
+            key,
+            _get_metadata(cat),
+            os.path.join(root, json_file) if "://" not in json_file else json_file,
+            os.path.join(root, image_root),
+        )
+
+
+# ---------kkuhn-block------------------------------
+
+
 # True for open source;
 # Internally at fb, we register them elsewhere
 if __name__.endswith(".builtin"):
@@ -302,3 +399,7 @@ if __name__.endswith(".builtin"):
     register_all_cityscapes_panoptic(_root)
     register_all_pascal_voc(_root)
     register_all_ade20k(_root)
+    #---------kkuhn-block------------------------------ # register dior
+    dior_root = "/data/pcl/object-centric-ovd/datasets"
+    register_all_dior(dior_root)
+    #---------kkuhn-block------------------------------
