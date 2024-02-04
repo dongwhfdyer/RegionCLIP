@@ -54,6 +54,7 @@ _PREDEFINED_SPLITS_COCO["coco_ovd"] = {
     "coco_2017_ovd_all_test": ("coco/val2017", "coco/annotations/ovd_ins_val2017_all.json"),
     "coco_2017_ovd_b_test": ("coco/val2017", "coco/annotations/ovd_ins_val2017_b.json"),
     "coco_2017_ovd_t_test": ("coco/val2017", "coco/annotations/ovd_ins_val2017_t.json"),
+    "10images": ("coco/train2017", "coco/annotations/10images.json"),
 }
 
 _PREDEFINED_SPLITS_COCO["coco_person"] = {
@@ -399,7 +400,7 @@ if __name__.endswith(".builtin"):
     register_all_cityscapes_panoptic(_root)
     register_all_pascal_voc(_root)
     register_all_ade20k(_root)
-    #---------kkuhn-block------------------------------ # register dior
+    # ---------kkuhn-block------------------------------ # register dior
     dior_root = "/data/pcl/object-centric-ovd/datasets"
     register_all_dior(dior_root)
-    #---------kkuhn-block------------------------------
+    # ---------kkuhn-block------------------------------

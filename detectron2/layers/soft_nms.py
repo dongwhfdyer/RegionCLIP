@@ -256,6 +256,7 @@ def _soft_nms(
 
         boxes = boxes[keep]
         scores = scores[keep]
+        idxs= idxs.cuda()# todo: delete maybe
         idxs = idxs[keep]
 
     return torch.tensor(idxs_out).to(boxes.device), torch.tensor(scores_out).to(scores.device)

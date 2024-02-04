@@ -173,7 +173,7 @@ class COCOEvaluator(DatasetEvaluator):
         if "proposals" in predictions[0]:
             self._eval_box_proposals(predictions)
         if "instances" in predictions[0]:
-            self._eval_predictions(predictions, img_ids=img_ids)
+            self._eval_predictions(predictions, img_ids=img_ids) # self._eval_predictions(predictions, img_ids=None)
         # Copy so the caller can do whatever with results
         return copy.deepcopy(self._results)
 

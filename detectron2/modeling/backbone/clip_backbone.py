@@ -11,6 +11,7 @@ from .build import BACKBONE_REGISTRY
 from detectron2.layers.blocks import FrozenBatchNorm2d
 from detectron2.layers import ShapeSpec
 
+
 class Bottleneck(nn.Module):
     expansion = 4
 
@@ -20,13 +21,13 @@ class Bottleneck(nn.Module):
         # all conv layers have stride 1. an avgpool is performed after the second convolution when stride > 1
         self.conv1 = nn.Conv2d(inplanes, planes, 1, bias=False)
         if norm_type == 'FronzenBN':
-            self.bn1 = FrozenBatchNorm2d(planes) # nn.BatchNorm2d(planes)
+            self.bn1 = FrozenBatchNorm2d(planes)  # nn.BatchNorm2d(planes)
         elif norm_type == 'SyncBN':
             self.bn1 = nn.SyncBatchNorm(planes)
 
         self.conv2 = nn.Conv2d(planes, planes, 3, padding=1, bias=False)
         if norm_type == 'FronzenBN':
-            self.bn2 = FrozenBatchNorm2d(planes) # nn.BatchNorm2d(planes)
+            self.bn2 = FrozenBatchNorm2d(planes)  # nn.BatchNorm2d(planes)
         elif norm_type == 'SyncBN':
             self.bn2 = nn.SyncBatchNorm(planes)
 
@@ -34,7 +35,7 @@ class Bottleneck(nn.Module):
 
         self.conv3 = nn.Conv2d(planes, planes * self.expansion, 1, bias=False)
         if norm_type == 'FronzenBN':
-            self.bn3 = FrozenBatchNorm2d(planes * self.expansion) # nn.BatchNorm2d(planes * self.expansion)
+            self.bn3 = FrozenBatchNorm2d(planes * self.expansion)  # nn.BatchNorm2d(planes * self.expansion)
         elif norm_type == 'SyncBN':
             self.bn3 = nn.SyncBatchNorm(planes * self.expansion)
 
@@ -45,13 +46,13 @@ class Bottleneck(nn.Module):
         if stride > 1 or inplanes != planes * Bottleneck.expansion:
             # downsampling layer is prepended with an avgpool, and the subsequent convolution has stride 1
             if norm_type == 'FronzenBN':
-                this_norm = FrozenBatchNorm2d(planes * self.expansion) #("1", nn.BatchNorm2d(planes * self.expansion))
+                this_norm = FrozenBatchNorm2d(planes * self.expansion)  # ("1", nn.BatchNorm2d(planes * self.expansion))
             elif norm_type == 'SyncBN':
                 this_norm = nn.SyncBatchNorm(planes * self.expansion)
             self.downsample = nn.Sequential(OrderedDict([
                 ("-1", nn.AvgPool2d(stride)),
                 ("0", nn.Conv2d(inplanes, planes * self.expansion, 1, stride=1, bias=False)),
-                ("1", this_norm), #("1", nn.BatchNorm2d(planes * self.expansion))
+                ("1", this_norm),  # ("1", nn.BatchNorm2d(planes * self.expansion))
             ]))
 
     def forward(self, x: torch.Tensor):
@@ -122,8 +123,8 @@ class ModifiedResNet(Backbone):
     - The final pooling layer is a QKV attention instead of an average pool
     """
 
-    def __init__(self, layers, output_dim, heads, input_resolution=224, width=64, 
-        out_features=None, freeze_at=0, depth=None, pool_vec=True, create_att_pool=False, norm_type='FronzenBN'):
+    def __init__(self, layers, output_dim, heads, input_resolution=224, width=64,
+                 out_features=None, freeze_at=0, depth=None, pool_vec=True, create_att_pool=False, norm_type='FronzenBN'):
         super().__init__()
         self.output_dim = output_dim
         self.input_resolution = input_resolution
@@ -142,9 +143,18 @@ class ModifiedResNet(Backbone):
             self.bn2 = nn.SyncBatchNorm(width // 2)
         self.conv3 = nn.Conv2d(width // 2, width, kernel_size=3, padding=1, bias=False)
         if norm_type == 'FronzenBN':
-            self.bn3 = FrozenBatchNorm2d(width) # nn.BatchNorm2d(width)
+            self.bn3 = FrozenBatchNorm2d(width)  # nn.BatchNorm2d(width)
         elif norm_type == 'SyncBN':
             self.bn3 = nn.SyncBatchNorm(width)
+
+        # #---------kkuhn-block------------------------------ # todo: delete kuhn: init weights for BN
+        # self.bn1.weight.data.fill_(1)
+        # self.bn1.bias.data.zero_()
+        # self.bn2.weight.data.fill_(1)
+        # self.bn2.bias.data.zero_()
+        # self.bn3.weight.data.fill_(1)
+        # self.bn3.bias.data.zero_()
+        # #---------kkuhn-block------------------------------
         self.avgpool = nn.AvgPool2d(2)
         self.relu = nn.ReLU(inplace=True)
 
@@ -156,8 +166,8 @@ class ModifiedResNet(Backbone):
         if 'res5' in out_features:  # FPN
             self.layer4 = self._make_layer(width * 8, layers[3], stride=2)
         else:  # C4, layer4 created here won't be used in backbone, but used in roi_head
-            self.layer4 = self._make_layer(width * 8, layers[3], stride=2) # None
-        
+            self.layer4 = self._make_layer(width * 8, layers[3], stride=2)  # None
+
         self.pool_vec = pool_vec
         if self.pool_vec or create_att_pool:  # pool a vector representation for an image
             embed_dim = width * 32  # the ResNet feature dimension
@@ -166,20 +176,19 @@ class ModifiedResNet(Backbone):
         #     for p in self.attnpool.parameters(): p.requires_grad = False
 
         self._out_features = out_features if out_features else []
-        if depth in [50,101]: # resnet50 or resnet 101
+        if depth in [50, 101]:  # resnet50 or resnet 101
             # FPN: ["res2", "res3", "res4", "res5"]; C4: ["res4"]
             self._out_feature_channels = {'stem': 64, 'res2': 256, 'res3': 512, 'res4': 1024, 'res5': 2048} if 'res5' in self._out_features \
                 else {'stem': 64, 'res2': 256, 'res3': 512, 'res4': 1024}
             self._out_feature_strides = {'stem': 4, 'res2': 4, 'res3': 8, 'res4': 16, 'res5': 32} if 'res5' in self._out_features \
-                else  {'stem': 4, 'res2': 4, 'res3': 8, 'res4': 16}  # anti-aliasing strided conv???        
-        elif depth in [200]: # resnet50x4
+                else {'stem': 4, 'res2': 4, 'res3': 8, 'res4': 16}  # anti-aliasing strided conv???
+        elif depth in [200]:  # resnet50x4
             # FPN: ["res2", "res3", "res4", "res5"]; C4: ["res4"]
             self._out_feature_channels = {'stem': 80, 'res2': 320, 'res3': 640, 'res4': 1280, 'res5': 2560} if 'res5' in self._out_features \
                 else {'stem': 80, 'res2': 320, 'res3': 640, 'res4': 1280}
             self._out_feature_strides = {'stem': 4, 'res2': 4, 'res3': 8, 'res4': 16, 'res5': 32} if 'res5' in self._out_features \
-                else  {'stem': 4, 'res2': 4, 'res3': 8, 'res4': 16}  # anti-aliasing strided conv???        
+                else {'stem': 4, 'res2': 4, 'res3': 8, 'res4': 16}  # anti-aliasing strided conv???
         self.freeze(freeze_at)
-
 
     def _make_layer(self, planes, blocks, stride=1):
         layers = [Bottleneck(self._inplanes, planes, stride, norm_type=self.norm_type)]
@@ -193,27 +202,32 @@ class ModifiedResNet(Backbone):
     def forward(self, x):
         def stem(x):
             for conv, bn in [(self.conv1, self.bn1), (self.conv2, self.bn2), (self.conv3, self.bn3)]:
-                x = self.relu(bn(conv(x)))
+                xx = conv(x)  # todo: originally, there is only one line for these two
+                #---------kkuhn-block------------------------------
+                bn.weight.data.fill_(1)  # todo: delete
+                bn.bias.data.zero_()  # todo: delete
+                #---------kkuhn-block------------------------------
+                x = self.relu(bn(xx))
             x = self.avgpool(x)
             return x
-        
+
         assert x.dim() == 4, f"ResNet takes an input of shape (N, C, H, W). Got {x.shape} instead!"
         outputs = {}
-        x = x.type(self.conv1.weight.dtype) # det2 resnet50: [3, 800, 1216]; CLIP resnet50: [3, 224, 224]
-        x = stem(x) # det2 resnet50: [64, 200, 304]; CLIP resnet50: [64, 56, 56]
+        x = x.type(self.conv1.weight.dtype)  # det2 resnet50: [3, 800, 1216]; CLIP resnet50: [3, 224, 224]
+        x = stem(x)  # det2 resnet50: [64, 200, 304]; CLIP resnet50: [64, 56, 56]
         if "stem" in self._out_features:
             outputs["stem"] = x
-        x = self.layer1(x) # det2 resnet50: [256, 200, 304]; CLIP resnet50: [256, 56, 56]
+        x = self.layer1(x)  # det2 resnet50: [256, 200, 304]; CLIP resnet50: [256, 56, 56]
         outputs['res2'] = x if "res2" in self._out_features else None
-        x = self.layer2(x) # det2 resnet50: [512, 100, 152]; CLIP resnet50: [512, 28, 28]
+        x = self.layer2(x)  # det2 resnet50: [512, 100, 152]; CLIP resnet50: [512, 28, 28]
         outputs['res3'] = x if "res3" in self._out_features else None
-        x = self.layer3(x) # det2 resnet50: [1024, 50, 76]; CLIP resnet50: [1024, 14, 14]
+        x = self.layer3(x)  # det2 resnet50: [1024, 50, 76]; CLIP resnet50: [1024, 14, 14]
         outputs['res4'] = x if "res4" in self._out_features else None
-        x = self.layer4(x)  if "res5" in self._out_features else x # det2 resnet50: [2048, 25, 38]; CLIP resnet50: [2048, 7, 7]
+        x = self.layer4(x) if "res5" in self._out_features else x  # det2 resnet50: [2048, 25, 38]; CLIP resnet50: [2048, 7, 7]
         outputs['res5'] = x if "res5" in self._out_features else None
 
         if self.pool_vec:  # pool a vector representation for an image, for global image classification
-            x = self.attnpool(x) # CLIP resnet50: [1024]
+            x = self.attnpool(x)  # CLIP resnet50: [1024]
             return x
         else:  # for FPN
             return outputs
@@ -234,6 +248,7 @@ class ModifiedResNet(Backbone):
         Returns:
             nn.Module: this ResNet itself
         """
+
         def cnnblockbase_freeze(nn_module):
             """
             Make this block not trainable.
@@ -246,8 +261,8 @@ class ModifiedResNet(Backbone):
             for p in nn_module.parameters():
                 p.requires_grad = False
             FrozenBatchNorm2d.convert_frozen_batchnorm(nn_module)
-        
-        if freeze_at >= 1: # stem
+
+        if freeze_at >= 1:  # stem
             cnnblockbase_freeze(self.conv1)
             cnnblockbase_freeze(self.bn1)
             cnnblockbase_freeze(self.conv2)
@@ -255,10 +270,10 @@ class ModifiedResNet(Backbone):
             cnnblockbase_freeze(self.conv3)
             cnnblockbase_freeze(self.bn3)
         # each stage is a torch.nn.modules.container.Sequential
-        for idx, stage in enumerate([self.layer1, self.layer2, self.layer3, self.layer4], start=2): 
+        for idx, stage in enumerate([self.layer1, self.layer2, self.layer3, self.layer4], start=2):
             if freeze_at >= idx:
                 for block in stage.children():  # each block is a Bottleneck
-                    cnnblockbase_freeze(block)  
+                    cnnblockbase_freeze(block)
         return self
 
     def output_shape(self):
@@ -565,10 +580,10 @@ def build_vit_clip(cfg, input_shape):
         CLIP: a :class:`CLIP` instance.
     """
     # port standard ResNet config to CLIP ModifiedResNet
-    freeze_at           = cfg.MODEL.BACKBONE.FREEZE_AT
-    out_features        = ['res5'] # includes the whole ResNet # cfg.MODEL.RESNETS.OUT_FEATURES
-    depth               = cfg.MODEL.RESNETS.DEPTH
-    
+    freeze_at = cfg.MODEL.BACKBONE.FREEZE_AT
+    out_features = ['res5']  # includes the whole ResNet # cfg.MODEL.RESNETS.OUT_FEATURES
+    depth = cfg.MODEL.RESNETS.DEPTH
+
     # num_blocks_per_stage = {
     #     18: [2, 2, 2, 2],
     #     34: [3, 4, 6, 3],
@@ -576,13 +591,13 @@ def build_vit_clip(cfg, input_shape):
     #     101: [3, 4, 23, 3],
     #     152: [3, 8, 36, 3],
     # }[depth]
-    vision_layers = 12 # num_blocks_per_stage
-    vision_width = 768 # cfg.MODEL.RESNETS.STEM_OUT_CHANNELS
-    
+    vision_layers = 12  # num_blocks_per_stage
+    vision_width = 768  # cfg.MODEL.RESNETS.STEM_OUT_CHANNELS
+
     # default configs of CLIP
-    embed_dim = 512 # 1024
+    embed_dim = 512  # 1024
     image_resolution = 224
-    vision_patch_size = 32 # None
+    vision_patch_size = 32  # None
     context_length = 77
     vocab_size = 49408
     transformer_width = 512
@@ -590,12 +605,13 @@ def build_vit_clip(cfg, input_shape):
     transformer_layers = 12
 
     model = CLIP(
-            embed_dim,
-            image_resolution, vision_layers, vision_width, vision_patch_size,
-            context_length, vocab_size, transformer_width, transformer_heads, transformer_layers,
-            out_features, freeze_at
-        )
+        embed_dim,
+        image_resolution, vision_layers, vision_width, vision_patch_size,
+        context_length, vocab_size, transformer_width, transformer_heads, transformer_layers,
+        out_features, freeze_at
+    )
     return model
+
 
 @BACKBONE_REGISTRY.register()
 def build_resnet_clip(cfg, input_shape):
@@ -606,58 +622,58 @@ def build_resnet_clip(cfg, input_shape):
         CLIP: a :class:`CLIP` instance.
     """
     # port standard ResNet config to CLIP ModifiedResNet
-    freeze_at           = cfg.MODEL.BACKBONE.FREEZE_AT
-    out_features        = ['res5'] # includes the whole ResNet # cfg.MODEL.RESNETS.OUT_FEATURES
-    depth               = cfg.MODEL.RESNETS.DEPTH
-    
+    freeze_at = cfg.MODEL.BACKBONE.FREEZE_AT
+    out_features = ['res5']  # includes the whole ResNet # cfg.MODEL.RESNETS.OUT_FEATURES
+    depth = cfg.MODEL.RESNETS.DEPTH
+
     num_blocks_per_stage = {
         18: [2, 2, 2, 2],
         34: [3, 4, 6, 3],
         50: [3, 4, 6, 3],
         101: [3, 4, 23, 3],
         152: [3, 8, 36, 3],
-        200: [4, 6, 10, 6], # flag for ResNet50x4
+        200: [4, 6, 10, 6],  # flag for ResNet50x4
     }[depth]
     vision_layers = num_blocks_per_stage
     vision_width = {
         50: 64,
         101: 64,
-        200: 80, # flag for ResNet50x4
+        200: 80,  # flag for ResNet50x4
     }[depth]  # cfg.MODEL.RESNETS.STEM_OUT_CHANNELS
-    
+
     # default configs of CLIP
     embed_dim = {
         50: 1024,
         101: 512,
-        200: 640, # flag for ResNet50x4
-    }[depth] 
+        200: 640,  # flag for ResNet50x4
+    }[depth]
     vision_heads = vision_width * 32 // 64
     image_resolution = {
         50: 224,
         101: 224,
-        200: 288, # flag for ResNet50x4
-    }[depth] 
+        200: 288,  # flag for ResNet50x4
+    }[depth]
     vision_patch_size = None
     context_length = 77
     vocab_size = 49408
     transformer_width = {
         50: 512,
         101: 512,
-        200: 640, # flag for ResNet50x4
-    }[depth] 
+        200: 640,  # flag for ResNet50x4
+    }[depth]
     transformer_heads = {
         50: 8,
         101: 8,
-        200: 10, # flag for ResNet50x4
-    }[depth] 
+        200: 10,  # flag for ResNet50x4
+    }[depth]
     transformer_layers = 12
 
     model = CLIP(
-            embed_dim,
-            image_resolution, vision_layers, vision_width, vision_patch_size,
-            context_length, vocab_size, transformer_width, transformer_heads, transformer_layers,
-            out_features, freeze_at
-        )
+        embed_dim,
+        image_resolution, vision_layers, vision_width, vision_patch_size,
+        context_length, vocab_size, transformer_width, transformer_heads, transformer_layers,
+        out_features, freeze_at
+    )
     return model
 
 
@@ -670,9 +686,9 @@ def build_clip_resnet_backbone(cfg, input_shape):
         ModifiedResNet: a :class:`ModifiedResNet` instance.
     """
     # port standard ResNet config to CLIP ModifiedResNet
-    freeze_at           = cfg.MODEL.BACKBONE.FREEZE_AT
-    out_features        = cfg.MODEL.RESNETS.OUT_FEATURES
-    depth               = cfg.MODEL.RESNETS.DEPTH
+    freeze_at = cfg.MODEL.BACKBONE.FREEZE_AT
+    out_features = cfg.MODEL.RESNETS.OUT_FEATURES
+    depth = cfg.MODEL.RESNETS.DEPTH
     # num_groups          = cfg.MODEL.RESNETS.NUM_GROUPS
     # width_per_group     = cfg.MODEL.RESNETS.WIDTH_PER_GROUP
     # bottleneck_channels = num_groups * width_per_group
@@ -683,50 +699,50 @@ def build_clip_resnet_backbone(cfg, input_shape):
     # deform_on_per_stage = cfg.MODEL.RESNETS.DEFORM_ON_PER_STAGE
     # deform_modulated    = cfg.MODEL.RESNETS.DEFORM_MODULATED
     # deform_num_groups   = cfg.MODEL.RESNETS.DEFORM_NUM_GROUPS
-    
+
     num_blocks_per_stage = {
         18: [2, 2, 2, 2],
         34: [3, 4, 6, 3],
         50: [3, 4, 6, 3],
         101: [3, 4, 23, 3],
         152: [3, 8, 36, 3],
-        200: [4, 6, 10, 6], # flag for ResNet50x4
+        200: [4, 6, 10, 6],  # flag for ResNet50x4
     }[depth]
     vision_layers = num_blocks_per_stage
     vision_width = {
         50: 64,
         101: 64,
-        200: 80, # flag for ResNet50x4
+        200: 80,  # flag for ResNet50x4
     }[depth]  # cfg.MODEL.RESNETS.STEM_OUT_CHANNELS
-    
+
     # default configs of CLIP ModifiedResNet, but not used if only building ModifiedResNet as backbone
     embed_dim = {
         50: 1024,
         101: 512,
-        200: 640, # flag for ResNet50x4
-    }[depth] 
+        200: 640,  # flag for ResNet50x4
+    }[depth]
     vision_heads = vision_width * 32 // 64
     image_resolution = {
         50: 224,
         101: 224,
-        200: 288, # flag for ResNet50x4
-    }[depth] 
+        200: 288,  # flag for ResNet50x4
+    }[depth]
 
     # if combine {ModifiedResNet of CLIP, C4, text emb as classifier}, then has to use att_pool to match dimension
-    create_att_pool = True if (cfg.MODEL.ROI_HEADS.NAME in ['CLIPRes5ROIHeads', 'CLIPStandardROIHeads'] and cfg.MODEL.CLIP.USE_TEXT_EMB_CLASSIFIER)\
-                           or cfg.MODEL.ROI_HEADS.NAME == 'PretrainRes5ROIHeads' else False
+    create_att_pool = True if (cfg.MODEL.ROI_HEADS.NAME in ['CLIPRes5ROIHeads', 'CLIPStandardROIHeads'] and cfg.MODEL.CLIP.USE_TEXT_EMB_CLASSIFIER) \
+                              or cfg.MODEL.ROI_HEADS.NAME == 'PretrainRes5ROIHeads' else False
 
-    return ModifiedResNet(layers=vision_layers, 
-                output_dim=embed_dim,
-                heads=vision_heads,
-                input_resolution=image_resolution,
-                width=vision_width,
-                out_features=out_features, 
-                freeze_at=freeze_at,
-                depth=depth,
-                pool_vec=False,
-                create_att_pool=create_att_pool,
-                )
+    return ModifiedResNet(layers=vision_layers,
+                          output_dim=embed_dim,
+                          heads=vision_heads,
+                          input_resolution=image_resolution,
+                          width=vision_width,
+                          out_features=out_features,
+                          freeze_at=freeze_at,
+                          depth=depth,
+                          pool_vec=False,
+                          create_att_pool=create_att_pool,
+                          )
 
 
 class CLIPLangEncoder(nn.Module):
@@ -763,7 +779,7 @@ class CLIPLangEncoder(nn.Module):
         self.ln_final = LayerNorm(transformer_width)
 
         self.text_projection = nn.Parameter(torch.empty(transformer_width, embed_dim))
-        #self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / 0.07))
+        # self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / 0.07))
 
         self.initialize_parameters()
 
@@ -793,7 +809,7 @@ class CLIPLangEncoder(nn.Module):
 
     @property
     def dtype(self):
-        return self.transformer.resblocks[0].mlp[0].weight.dtype # torch.float32, not sure whether need to be fp16 in pretraining
+        return self.transformer.resblocks[0].mlp[0].weight.dtype  # torch.float32, not sure whether need to be fp16 in pretraining
 
     def encode_text(self, text, only_eot=True):
         x = self.token_embedding(text).type(self.dtype)  # [batch_size, n_ctx, d_model]
@@ -822,56 +838,56 @@ def build_clip_language_encoder(cfg):
         CLIP: a :class:`CLIP` instance.
     """
     # port standard ResNet config to CLIP ModifiedResNet
-    freeze_at           = cfg.MODEL.BACKBONE.FREEZE_AT
-    out_features        = ['res5'] # includes the whole ResNet # cfg.MODEL.RESNETS.OUT_FEATURES
-    depth               = cfg.MODEL.RESNETS.DEPTH
-    
+    freeze_at = cfg.MODEL.BACKBONE.FREEZE_AT
+    out_features = ['res5']  # includes the whole ResNet # cfg.MODEL.RESNETS.OUT_FEATURES
+    depth = cfg.MODEL.RESNETS.DEPTH
+
     num_blocks_per_stage = {
         18: [2, 2, 2, 2],
         34: [3, 4, 6, 3],
         50: [3, 4, 6, 3],
         101: [3, 4, 23, 3],
         152: [3, 8, 36, 3],
-        200: [4, 6, 10, 6], # flag for ResNet50x4
+        200: [4, 6, 10, 6],  # flag for ResNet50x4
     }[depth]
     vision_layers = num_blocks_per_stage
     vision_width = {
         50: 64,
         101: 64,
-        200: 80, # flag for ResNet50x4
+        200: 80,  # flag for ResNet50x4
     }[depth]  # cfg.MODEL.RESNETS.STEM_OUT_CHANNELS
-    
+
     # default configs of CLIP
     embed_dim = {
         50: 1024,
         101: 512,
-        200: 640, # flag for ResNet50x4
-    }[depth] 
+        200: 640,  # flag for ResNet50x4
+    }[depth]
     vision_heads = vision_width * 32 // 64
     image_resolution = {
         50: 224,
         101: 224,
-        200: 288, # flag for ResNet50x4
-    }[depth] 
+        200: 288,  # flag for ResNet50x4
+    }[depth]
     vision_patch_size = None
     context_length = 77
     vocab_size = 49408
     transformer_width = {
         50: 512,
         101: 512,
-        200: 640, # flag for ResNet50x4
-    }[depth] 
+        200: 640,  # flag for ResNet50x4
+    }[depth]
     transformer_heads = {
         50: 8,
         101: 8,
-        200: 10, # flag for ResNet50x4
-    }[depth] 
+        200: 10,  # flag for ResNet50x4
+    }[depth]
     transformer_layers = 12
 
     model = CLIPLangEncoder(
-            embed_dim,
-            image_resolution, vision_layers, vision_width, vision_patch_size,
-            context_length, vocab_size, transformer_width, transformer_heads, transformer_layers,
-            out_features, freeze_at
-        )
+        embed_dim,
+        image_resolution, vision_layers, vision_width, vision_patch_size,
+        context_length, vocab_size, transformer_width, transformer_heads, transformer_layers,
+        out_features, freeze_at
+    )
     return model

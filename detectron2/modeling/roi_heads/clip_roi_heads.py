@@ -24,6 +24,7 @@ from .mask_head import build_mask_head
 
 from .roi_heads import ROI_HEADS_REGISTRY, select_foreground_proposals, ROIHeads
 
+
 @ROI_HEADS_REGISTRY.register()
 class CLIPRes5ROIHeads(ROIHeads):
     """
@@ -33,14 +34,14 @@ class CLIPRes5ROIHeads(ROIHeads):
 
     @configurable
     def __init__(
-        self,
-        *,
-        in_features: List[str],
-        pooler: ROIPooler,
-        res5: None,
-        box_predictor: nn.Module,
-        mask_head: Optional[nn.Module] = None,
-        **kwargs,
+            self,
+            *,
+            in_features: List[str],
+            pooler: ROIPooler,
+            res5: None,
+            box_predictor: nn.Module,
+            mask_head: Optional[nn.Module] = None,
+            **kwargs,
     ):
         """
         NOTE: this interface is experimental.
@@ -61,7 +62,7 @@ class CLIPRes5ROIHeads(ROIHeads):
         self.pooler = pooler
         # if isinstance(res5, (list, tuple)):
         #     res5 = nn.Sequential(*res5)
-        self.res5 = res5  #  None, this head uses the res5 from backbone
+        self.res5 = res5  # None, this head uses the res5 from backbone
         self.box_predictor = box_predictor
         self.mask_on = mask_head is not None
         if self.mask_on:
@@ -73,10 +74,10 @@ class CLIPRes5ROIHeads(ROIHeads):
         ret = super().from_config(cfg)
         in_features = ret["in_features"] = cfg.MODEL.ROI_HEADS.IN_FEATURES
         pooler_resolution = cfg.MODEL.ROI_BOX_HEAD.POOLER_RESOLUTION
-        pooler_type       = cfg.MODEL.ROI_BOX_HEAD.POOLER_TYPE
-        pooler_scales     = (1.0 / input_shape[in_features[0]].stride, )
-        sampling_ratio    = cfg.MODEL.ROI_BOX_HEAD.POOLER_SAMPLING_RATIO
-        mask_on           = cfg.MODEL.MASK_ON
+        pooler_type = cfg.MODEL.ROI_BOX_HEAD.POOLER_TYPE
+        pooler_scales = (1.0 / input_shape[in_features[0]].stride,)
+        sampling_ratio = cfg.MODEL.ROI_BOX_HEAD.POOLER_SAMPLING_RATIO
+        mask_on = cfg.MODEL.MASK_ON
         # fmt: on
         assert not cfg.MODEL.KEYPOINT_ON
         assert len(in_features) == 1
@@ -97,7 +98,7 @@ class CLIPRes5ROIHeads(ROIHeads):
         #     )
         #     cls._build_res5_block = classmethod(cls._build_res5_block)
 
-        ret["res5"], out_channels = None, cfg.MODEL.RESNETS.RES2_OUT_CHANNELS * 8 # cls._build_res5_block(cfg)
+        ret["res5"], out_channels = None, cfg.MODEL.RESNETS.RES2_OUT_CHANNELS * 8  # cls._build_res5_block(cfg)
         ret["box_predictor"] = FastRCNNOutputLayers(
             cfg, ShapeSpec(channels=out_channels, height=1, width=1)
         )
@@ -121,7 +122,7 @@ class CLIPRes5ROIHeads(ROIHeads):
 
         if self.training:
             assert targets
-            proposals = self.label_and_sample_proposals(proposals, targets)
+            proposals = self.label_and_sample_proposals(proposals, targets)  # filter out some proposals
         del targets
 
         proposal_boxes = [x.proposal_boxes for x in proposals]
@@ -131,11 +132,13 @@ class CLIPRes5ROIHeads(ROIHeads):
         if attnpool:  # att pooling
             att_feats = attnpool(box_features)
             predictions = self.box_predictor(att_feats)
-        else: # mean pooling
+        else:  # mean pooling
             predictions = self.box_predictor(box_features.mean(dim=[2, 3]))
 
         if self.training:
             del features
+            pred_classes = predictions[0].argmax(dim=1)  # todo: delete
+            print("pred_classes: ", pred_classes)
             losses = self.box_predictor.losses(predictions, proposals)
             if self.mask_on:
                 proposals, fg_selection_masks = select_foreground_proposals(
@@ -158,6 +161,8 @@ class CLIPRes5ROIHeads(ROIHeads):
         """
         Use the given boxes in `instances` to produce other (non-box) per-ROI outputs.
 
+        kuhn: Use the boxes output from box_predictor to predict other outputs like mask, keypoint, etc.
+
         Args:
             features: same as in `forward()`
             instances (list[Instances]): instances to predict other outputs. Expect the keys
@@ -178,6 +183,7 @@ class CLIPRes5ROIHeads(ROIHeads):
         else:
             return instances
 
+
 @ROI_HEADS_REGISTRY.register()
 class PretrainRes5ROIHeads(ROIHeads):
     """
@@ -187,14 +193,14 @@ class PretrainRes5ROIHeads(ROIHeads):
 
     @configurable
     def __init__(
-        self,
-        *,
-        in_features: List[str],
-        pooler: ROIPooler,
-        res5: None,
-        box_predictor: Optional[nn.Module] = None,
-        mask_head: Optional[nn.Module] = None,
-        **kwargs,
+            self,
+            *,
+            in_features: List[str],
+            pooler: ROIPooler,
+            res5: None,
+            box_predictor: Optional[nn.Module] = None,
+            mask_head: Optional[nn.Module] = None,
+            **kwargs,
     ):
         """
         NOTE: this interface is experimental.
@@ -215,7 +221,7 @@ class PretrainRes5ROIHeads(ROIHeads):
         self.pooler = pooler
         # if isinstance(res5, (list, tuple)):
         #     res5 = nn.Sequential(*res5)
-        self.res5 = res5  #  None, this head uses the res5 from backbone
+        self.res5 = res5  # None, this head uses the res5 from backbone
         self.box_predictor = None
         self.mask_on = None
 
@@ -225,10 +231,10 @@ class PretrainRes5ROIHeads(ROIHeads):
         ret = super().from_config(cfg)
         in_features = ret["in_features"] = cfg.MODEL.ROI_HEADS.IN_FEATURES
         pooler_resolution = cfg.MODEL.ROI_BOX_HEAD.POOLER_RESOLUTION
-        pooler_type       = cfg.MODEL.ROI_BOX_HEAD.POOLER_TYPE
-        pooler_scales     = (1.0 / input_shape[in_features[0]].stride, )
-        sampling_ratio    = cfg.MODEL.ROI_BOX_HEAD.POOLER_SAMPLING_RATIO
-        mask_on           = cfg.MODEL.MASK_ON
+        pooler_type = cfg.MODEL.ROI_BOX_HEAD.POOLER_TYPE
+        pooler_scales = (1.0 / input_shape[in_features[0]].stride,)
+        sampling_ratio = cfg.MODEL.ROI_BOX_HEAD.POOLER_SAMPLING_RATIO
+        mask_on = cfg.MODEL.MASK_ON
         # fmt: on
         assert not cfg.MODEL.KEYPOINT_ON
         assert len(in_features) == 1
@@ -240,7 +246,7 @@ class PretrainRes5ROIHeads(ROIHeads):
             pooler_type=pooler_type,
         )
 
-        ret["res5"], out_channels = None, cfg.MODEL.RESNETS.RES2_OUT_CHANNELS * 8 # cls._build_res5_block(cfg)
+        ret["res5"], out_channels = None, cfg.MODEL.RESNETS.RES2_OUT_CHANNELS * 8  # cls._build_res5_block(cfg)
         ret["box_predictor"] = None
         ret["mask_head"] = None
         return ret
@@ -253,14 +259,14 @@ class PretrainRes5ROIHeads(ROIHeads):
         """
         See :meth:`ROIHeads.forward`.
         """
-        proposal_boxes = [x.proposal_boxes for x in proposals] # object proposals
+        proposal_boxes = [x.proposal_boxes for x in proposals]  # object proposals
         box_features = self._shared_roi_transform(
             [features[f] for f in self.in_features], proposal_boxes, res5
         )
         if attnpool:  # att pooling
             att_feats = attnpool(box_features)
             region_feats = att_feats
-        else: # mean pooling
+        else:  # mean pooling
             region_feats = box_features.mean(dim=[2, 3])
 
         return region_feats
@@ -284,6 +290,7 @@ class PretrainRes5ROIHeads(ROIHeads):
 
         return instances
 
+
 @ROI_HEADS_REGISTRY.register()
 class CLIPStandardROIHeads(ROIHeads):
     """
@@ -293,17 +300,17 @@ class CLIPStandardROIHeads(ROIHeads):
 
     @configurable
     def __init__(
-        self,
-        *,
-        box_in_features: List[str],
-        box_pooler: ROIPooler,
-        box_head: nn.Module,
-        box_predictor: nn.Module,
-        mask_in_features: Optional[List[str]] = None,
-        mask_pooler: Optional[ROIPooler] = None,
-        mask_head: Optional[nn.Module] = None,
-        train_on_pred_boxes: bool = False,
-        **kwargs,
+            self,
+            *,
+            box_in_features: List[str],
+            box_pooler: ROIPooler,
+            box_head: nn.Module,
+            box_predictor: nn.Module,
+            mask_in_features: Optional[List[str]] = None,
+            mask_pooler: Optional[ROIPooler] = None,
+            mask_head: Optional[nn.Module] = None,
+            train_on_pred_boxes: bool = False,
+            **kwargs,
     ):
         """
         NOTE: this interface is experimental.
@@ -358,11 +365,11 @@ class CLIPStandardROIHeads(ROIHeads):
     @classmethod
     def _init_box_head(cls, cfg, input_shape):
         # fmt: off
-        in_features       = cfg.MODEL.ROI_HEADS.IN_FEATURES
+        in_features = cfg.MODEL.ROI_HEADS.IN_FEATURES
         pooler_resolution = cfg.MODEL.ROI_BOX_HEAD.POOLER_RESOLUTION
-        pooler_scales     = tuple(1.0 / input_shape[k].stride for k in in_features)
-        sampling_ratio    = cfg.MODEL.ROI_BOX_HEAD.POOLER_SAMPLING_RATIO
-        pooler_type       = cfg.MODEL.ROI_BOX_HEAD.POOLER_TYPE
+        pooler_scales = tuple(1.0 / input_shape[k].stride for k in in_features)
+        sampling_ratio = cfg.MODEL.ROI_BOX_HEAD.POOLER_SAMPLING_RATIO
+        pooler_type = cfg.MODEL.ROI_BOX_HEAD.POOLER_TYPE
         # fmt: on
 
         # If StandardROIHeads is applied on multiple feature maps (as in FPN),
@@ -383,7 +390,7 @@ class CLIPStandardROIHeads(ROIHeads):
         # New subclasses of ROIHeads do not need "box predictor"s.
         box_head = None if cfg.MODEL.CLIP.USE_TEXT_EMB_CLASSIFIER else build_box_head(
             cfg, ShapeSpec(channels=in_channels, height=pooler_resolution, width=pooler_resolution)
-        ) 
+        )
         box_head_output_shape = 1024
         box_predictor = FastRCNNOutputLayers(cfg, box_head_output_shape)
         return {
@@ -398,11 +405,11 @@ class CLIPStandardROIHeads(ROIHeads):
         if not cfg.MODEL.MASK_ON:
             return {}
         # fmt: off
-        in_features       = cfg.MODEL.ROI_HEADS.IN_FEATURES
+        in_features = cfg.MODEL.ROI_HEADS.IN_FEATURES
         pooler_resolution = cfg.MODEL.ROI_MASK_HEAD.POOLER_RESOLUTION
-        pooler_scales     = tuple(1.0 / input_shape[k].stride for k in in_features)
-        sampling_ratio    = cfg.MODEL.ROI_MASK_HEAD.POOLER_SAMPLING_RATIO
-        pooler_type       = cfg.MODEL.ROI_MASK_HEAD.POOLER_TYPE
+        pooler_scales = tuple(1.0 / input_shape[k].stride for k in in_features)
+        sampling_ratio = cfg.MODEL.ROI_MASK_HEAD.POOLER_SAMPLING_RATIO
+        pooler_type = cfg.MODEL.ROI_MASK_HEAD.POOLER_TYPE
         # fmt: on
 
         in_channels = [input_shape[f].channels for f in in_features][0]
@@ -428,12 +435,12 @@ class CLIPStandardROIHeads(ROIHeads):
         return ret
 
     def forward(
-        self,
-        images: ImageList,
-        features: Dict[str, torch.Tensor],
-        proposals: List[Instances],
-        targets: Optional[List[Instances]] = None,
-        attnpool=None,
+            self,
+            images: ImageList,
+            features: Dict[str, torch.Tensor],
+            proposals: List[Instances],
+            targets: Optional[List[Instances]] = None,
+            attnpool=None,
     ) -> Tuple[List[Instances], Dict[str, torch.Tensor]]:
         """
         See :class:`ROIHeads.forward`.
@@ -459,7 +466,7 @@ class CLIPStandardROIHeads(ROIHeads):
             return pred_instances, {}
 
     def forward_with_given_boxes(
-        self, features: Dict[str, torch.Tensor], instances: List[Instances]
+            self, features: Dict[str, torch.Tensor], instances: List[Instances]
     ) -> List[Instances]:
         """
         Use the given boxes in `instances` to produce other (non-box) per-ROI outputs.
@@ -503,9 +510,9 @@ class CLIPStandardROIHeads(ROIHeads):
         """
         features = [features[f] for f in self.box_in_features]
         box_features = self.box_pooler(features, [x.proposal_boxes for x in proposals])
-        if attnpool: # att pooling
+        if attnpool:  # att pooling
             box_features = attnpool(box_features)
-        else: # default FPN pooling (FastRCNNConvFCHead)
+        else:  # default FPN pooling (FastRCNNConvFCHead)
             box_features = self.box_head(box_features)
         predictions = self.box_predictor(box_features)
         del box_features

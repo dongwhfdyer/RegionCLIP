@@ -41,17 +41,42 @@ class FrozenBatchNorm2d(nn.Module):
         self.register_buffer("bias", torch.zeros(num_features))
         self.register_buffer("running_mean", torch.zeros(num_features))
         self.register_buffer("running_var", torch.ones(num_features) - eps)
+        self.requires_grad_(False) # todo: delete
 
     def forward(self, x):
         if x.requires_grad:
             # When gradients are needed, F.batch_norm will use extra memory
             # because its backward op computes gradients for weight/bias as well.
-            scale = self.weight * (self.running_var + self.eps).rsqrt()
-            bias = self.bias - self.running_mean * scale
+
+            #---------kkuhn-block------------------------------ # todo: modified. Be careful
+            scale = torch.ones(self.num_features, device=x.device) * (self.running_var + self.eps).rsqrt()
+            bias = torch.zeros(self.num_features, device=x.device) - self.running_mean * scale
             scale = scale.reshape(1, -1, 1, 1)
             bias = bias.reshape(1, -1, 1, 1)
             out_dtype = x.dtype  # may be half
             return x * scale.to(out_dtype) + bias.to(out_dtype)
+            #---------kkuhn-block------------------------------
+
+            # #---------kkuhn-block------------------------------ # original
+            # scale = self.weight * (self.running_var + self.eps).rsqrt()
+            # bias = self.bias - self.running_mean * scale
+            # scale = scale.reshape(1, -1, 1, 1)
+            # bias = bias.reshape(1, -1, 1, 1)
+            # out_dtype = x.dtype  # may be half
+            # return x * scale.to(out_dtype) + bias.to(out_dtype)
+            # #---------kkuhn-block------------------------------
+
+            # #---------kkuhn-block------------------------------ # todo: kuhn : delete
+            # F.batch_norm(
+            #     x,
+            #     self.running_mean,
+            #     self.running_var,
+            #     self.weight,
+            #     self.bias,
+            #     training=False,
+            #     eps=self.eps,
+            # )
+            # #---------kkuhn-block------------------------------
         else:
             # When gradients are not needed, F.batch_norm is a single fused op
             # and provide more optimization opportunities.
@@ -59,8 +84,8 @@ class FrozenBatchNorm2d(nn.Module):
                 x,
                 self.running_mean,
                 self.running_var,
-                self.weight,
-                self.bias,
+                torch.ones(self.num_features, device=x.device),
+                torch.zeros(self.num_features, device=x.device),
                 training=False,
                 eps=self.eps,
             )

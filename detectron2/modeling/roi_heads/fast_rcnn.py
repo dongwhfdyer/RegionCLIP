@@ -448,7 +448,7 @@ class FastRCNNOutputLayers(nn.Module):
             self.cls_score = nn.Linear(input_size, num_classes, bias=self.use_bias)
             with torch.no_grad():
                 if clip_cls_emb[1] is not None:  # it could be None during region feature extraction
-                    pre_computed_w = torch.load(clip_cls_emb[1], map_location='cuda:0') # todo # [num_classes, 1024] for RN50
+                    pre_computed_w = torch.load(clip_cls_emb[1], map_location='cuda:0')  # todo # [num_classes, 1024] for RN50
                     self.cls_score.weight.copy_(pre_computed_w)
                 self.cls_score.weight.requires_grad = text_emb_require_grad  # freeze embeddings
                 if self.use_bias:
@@ -465,7 +465,7 @@ class FastRCNNOutputLayers(nn.Module):
             # class embedding during test 
             self.test_cls_score = None
             if openset_test[1] is not None:  # openset test enabled
-                pre_computed_w = torch.load(openset_test[1], map_location='cuda:0') # todo # [#openset_test_num_cls, 1024] for RN50
+                pre_computed_w = torch.load(openset_test[1], map_location='cuda:0')  # todo # [#openset_test_num_cls, 1024] for RN50
                 self.openset_test_num_cls = pre_computed_w.size(0)
                 self.test_cls_score = nn.Linear(input_size, self.openset_test_num_cls, bias=self.use_bias)
                 self.test_cls_score.weight.requires_grad = False  # freeze embeddings

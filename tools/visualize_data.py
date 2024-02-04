@@ -54,6 +54,7 @@ if __name__ == "__main__":
     os.makedirs(dirname, exist_ok=True)
     metadata = MetadataCatalog.get(cfg.DATASETS.TRAIN[0])
 
+
     def output(vis, fname):
         if args.show:
             print(fname)
@@ -63,6 +64,7 @@ if __name__ == "__main__":
             filepath = os.path.join(dirname, fname)
             print("Saving to {} ...".format(filepath))
             vis.save(filepath)
+
 
     scale = 1.0
     if args.source == "dataloader":
@@ -92,3 +94,5 @@ if __name__ == "__main__":
             visualizer = Visualizer(img, metadata=metadata, scale=scale)
             vis = visualizer.draw_dataset_dict(dic)
             output(vis, os.path.basename(dic["file_name"]))
+
+            # mm = DatasetCatalog.get(k)

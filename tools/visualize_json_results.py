@@ -81,20 +81,20 @@ if __name__ == "__main__":
 
     for dic in tqdm.tqdm(dicts):
         cnt += 1
-        if cnt < 0: #100:
+        if cnt < 0:  # 100:
             continue
         img = cv2.imread(dic["file_name"], cv2.IMREAD_COLOR)[:, :, ::-1]
         basename = os.path.basename(dic["file_name"])
         if 'ourclip' in args.input:
             basename = basename.split(".")[0] + "_ours.jpg"
-        
-        if args.show_unique_boxes: 
+
+        if args.show_unique_boxes:
             seen_box = []
             unique_box_pred = []
             for pred in pred_by_image[dic["image_id"]][:args.max_boxes]:  # assume boxes are already sorted by score
-                if pred['bbox'][2] * pred['bbox'][3] < args.small_region_px: # filter the small boxes
+                if pred['bbox'][2] * pred['bbox'][3] < args.small_region_px:  # filter the small boxes
                     continue
-                if pred['bbox'] in seen_box: # ignore other predictions of this seen box
+                if pred['bbox'] in seen_box:  # ignore other predictions of this seen box
                     continue
                 else:
                     seen_box.append(pred['bbox'])
@@ -109,5 +109,8 @@ if __name__ == "__main__":
         vis = Visualizer(img, metadata)
         vis_gt = vis.draw_dataset_dict(dic).get_image()
 
-        concat = vis_pred # np.concatenate((vis_pred, vis_gt), axis=1)
+        concat = vis_pred  # np.concatenate((vis_pred, vis_gt), axis=1)
         cv2.imwrite(os.path.join(args.output, basename), concat[:, :, ::-1])
+
+        #  python ./tools/visualize_json_results.py --input ./output/inference/coco_instances_results.json --output ./output/regions --dataset DIOR_generalized_zeroshot_val_1_trainval --conf-threshold 0.05 --show-unique-boxes --max-boxes 25 --small-region-px 8100
+        #  python ./tools/visualize_json_results.py --input ./output/inference/coco_instances_results.json --output ./output/regions --dataset 10images --conf-threshold 0.05 --show-unique-boxes --max-boxes 25 --small-region-px 8100

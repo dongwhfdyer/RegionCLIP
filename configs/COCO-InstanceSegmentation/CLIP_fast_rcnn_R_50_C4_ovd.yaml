@@ -42,7 +42,8 @@ INPUT:
   MIN_SIZE_TRAIN: (640, 672, 704, 736, 768, 800)
 DATASETS:
   TRAIN: ("coco_2017_ovd_b_train",)
-  TEST: ("coco_2017_ovd_all_test",)
+  TEST: ("10images",) # todo: attention there need to be changed
+#  TEST: ("coco_2017_ovd_all_test",)
 TEST:
   EVAL_PERIOD: 25000
 SOLVER:
